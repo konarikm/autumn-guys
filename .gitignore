@@ -107,3 +107,33 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# ── Autumn Guys: extra ignores ──
+# OS junk
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE / editor settings (personal)
+.idea/
+.vscode/
+.fleet/
+*.swp
+*~
+
+# Unity generated / local only
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Pp]rofiler[Cc]aptures/
+*.pidb
+*.booproj
+
+# Windows builds (share the build as a zip, not via git)
+*.exe
+*.zip
+/[Bb]uild*/

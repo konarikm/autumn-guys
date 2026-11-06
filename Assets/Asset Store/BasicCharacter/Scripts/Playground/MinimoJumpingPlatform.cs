@@ -41,7 +41,7 @@ public class MinimoJumpingPlatform : MonoBehaviour
             return false;
         }
 
-        int characterId = controller.GetInstanceID();
+        int characterId = controller.GetHashCode();
         if (nextBounceTimeByCharacterId.TryGetValue(characterId, out float nextBounceTime) && Time.time < nextBounceTime)
         {
             return false;

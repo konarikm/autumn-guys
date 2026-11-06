@@ -230,7 +230,7 @@ public class MinimoCharacterBootstrap : MonoBehaviour
             return true;
         }
 
-        int characterId = character.GetInstanceID();
+        int characterId = character.GetHashCode();
         if (runtimeClaimedCharacterId == characterId)
         {
             return true;
