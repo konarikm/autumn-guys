@@ -515,13 +515,22 @@ namespace AutumnGuys.EditorTools
             BuildCheckpoint(course, 2, new Vector3(0, 0.05f, 108));
 
             // ── Section 3: falling tiles ──
+            // Gaps (~2.2 m) are too wide to walk over but well within a running jump (~5 m),
+            // so the player has to hop from tile to tile between CP2 (ends z=114) and CP3 (starts z=139).
+            const float tileSize = 2.4f;
+            const float tileGap = 2.2f;
+            const int tileRows = 5;
+            float firstTileZ = 114f + tileGap + tileSize * 0.5f;
+            float lastTileZ = 139f - tileGap - tileSize * 0.5f;
+            float rowStep = (lastTileZ - firstTileZ) / (tileRows - 1);
+            float colStep = tileSize + tileGap;
             var tiles = new GameObject("FallingTiles").transform;
             tiles.SetParent(course);
-            for (int row = 0; row < 6; row++)
+            for (int row = 0; row < tileRows; row++)
             for (int col = -1; col <= 1; col++)
             {
-                var tile = Box($"Tile_{row}_{col + 1}", new Vector3(col * 3.6f, -0.25f, 117.5f + row * 3.6f),
-                    new Vector3(3f, 0.5f, 3f), mats["Falling"], tiles);
+                var tile = Box($"Tile_{row}_{col + 1}", new Vector3(col * colStep, -0.25f, firstTileZ + row * rowStep),
+                    new Vector3(tileSize, 0.5f, tileSize), mats["Falling"], tiles);
                 var rb = tile.AddComponent<Rigidbody>();
                 rb.isKinematic = true;
                 rb.mass = 5f;
