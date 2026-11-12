@@ -80,6 +80,7 @@ namespace AutumnGuys
 
             // 1) Memorise
             foreach (var t in tiles) t.ShowIcon(true);
+            AudioManager.Play(Sfx.Reveal, 1f, 0f);
             Hud?.ShowPrompt("Remember the icons!");
             yield return WaitRunning(revealTime);
             if (!Running) yield break;
@@ -94,7 +95,12 @@ namespace AutumnGuys
             {
                 if (!Running) yield break;
                 string n = Mathf.CeilToInt(left).ToString();
-                if (n != lastCountdown) { Hud?.ShowCountdown(n); lastCountdown = n; }
+                if (n != lastCountdown)
+                {
+                    Hud?.ShowCountdown(n);
+                    AudioManager.Play(Sfx.Tick, 1f, 0f);
+                    lastCountdown = n;
+                }
                 yield return null;
             }
             lastCountdown = null;
@@ -103,6 +109,7 @@ namespace AutumnGuys
             if (!Running) yield break;
 
             // 3) Drop the wrong tiles, reveal the right ones
+            AudioManager.Play(Sfx.TileFall, 1f, 0f);
             float dropDuration = 0f;
             foreach (var t in tiles)
             {

@@ -57,6 +57,7 @@ namespace AutumnGuys
         {
             landed = true;
             if (marker != null) Destroy(marker);
+            AudioManager.Play(Sfx.AcornImpact, 0.9f, 0.1f);
             if (targetTile != null) targetTile.TriggerFall(true);
 
             foreach (var c in Physics.OverlapSphere(landPos + Vector3.up * 0.8f, impactRadius, ~0, QueryTriggerInteraction.Ignore))

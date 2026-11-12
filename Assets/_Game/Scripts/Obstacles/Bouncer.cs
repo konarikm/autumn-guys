@@ -15,6 +15,7 @@ namespace AutumnGuys
             Vector3 v = rb.linearVelocity;
             v.y = bounceVelocity;
             rb.linearVelocity = v;
+            AudioManager.Play(Sfx.Bounce);
         }
     }
 }

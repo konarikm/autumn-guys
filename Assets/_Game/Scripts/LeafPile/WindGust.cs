@@ -54,6 +54,7 @@ namespace AutumnGuys
             if (!arena.IsRunning) { End(player, hud); yield break; }
 
             if (hud != null) hud.ShowWind(dir, false);
+            AudioManager.Play(Sfx.Wind, 1f, 0.05f);
             if (leafBurst != null)
             {
                 leafBurst.transform.SetPositionAndRotation(

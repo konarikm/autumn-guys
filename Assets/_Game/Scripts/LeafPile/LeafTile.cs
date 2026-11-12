@@ -82,6 +82,7 @@ namespace AutumnGuys
         {
             triggered = true;
             Triggered?.Invoke(this);
+            if (shakeTime > 0f) AudioManager.Play(Sfx.TileShake, 0.6f, 0.12f);
 
             for (float t = 0f; t < shakeTime; t += Time.deltaTime)
             {

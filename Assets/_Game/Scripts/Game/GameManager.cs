@@ -78,9 +78,11 @@ namespace AutumnGuys
             for (int i = Mathf.CeilToInt(countdownSeconds); i > 0; i--)
             {
                 hud.ShowCountdown(i.ToString());
+                AudioManager.Play(Sfx.Countdown, 1f, 0f);
                 yield return new WaitForSeconds(1f);
             }
             hud.ShowCountdown("START!");
+            AudioManager.Play(Sfx.Go, 1f, 0f);
             player.ControlsEnabled = true;
             State = GameState.Running;
             yield return new WaitForSeconds(0.8f);
@@ -121,6 +123,7 @@ namespace AutumnGuys
             if (currentCheckpoint != null && cp.index <= currentCheckpoint.index) return false;
             currentCheckpoint = cp;
             hud.Flash("CHECKPOINT!");
+            AudioManager.Play(Sfx.Checkpoint, 1f, 0f);
             return true;
         }
 
@@ -133,7 +136,11 @@ namespace AutumnGuys
         IEnumerator RespawnRoutine(bool fell)
         {
             respawning = true;
-            if (fell) hud.Flash("OOPS!");
+            if (fell)
+            {
+                hud.Flash("OOPS!");
+                AudioManager.Play(Sfx.Fall);
+            }
             yield return hud.FadeRoutine(0f, 1f, 0.15f);
 
             Vector3 pos = currentCheckpoint != null ? currentCheckpoint.SpawnPosition : startPoint.position;
@@ -150,6 +157,7 @@ namespace AutumnGuys
             if (State != GameState.Running) return;
             State = GameState.Finished;
             player.Celebrate();
+            AudioManager.Play(Sfx.Finish, 1f, 0f);
             bool record = SaveData.SubmitTime(LevelId, ElapsedTime);
             StartCoroutine(ShowWinDelayed(record));
         }
@@ -157,6 +165,7 @@ namespace AutumnGuys
         IEnumerator ShowWinDelayed(bool record)
         {
             yield return new WaitForSeconds(1.5f);
+            if (record) AudioManager.Play(Sfx.NewRecord, 1f, 0f);
             SetCursorLocked(false);
             hud.ShowWin(ElapsedTime, SaveData.GetBestTime(LevelId), record, FallCount);
         }
@@ -168,6 +177,7 @@ namespace AutumnGuys
             BonusTime += seconds;
             BonusCount++;
             hud.Flash($"+{seconds:0} s");
+            AudioManager.Play(Sfx.Pickup, 0.6f, 0.04f);
         }
 
         /// <summary>Survival (Rounds scoring): the player survived a round.</summary>
@@ -175,6 +185,7 @@ namespace AutumnGuys
         {
             if (State != GameState.Running) return;
             Rounds++;
+            AudioManager.Play(Sfx.Safe, 1f, 0f);
         }
 
         /// <summary>Survival: the player fell out of the arena.</summary>
@@ -185,6 +196,7 @@ namespace AutumnGuys
             player.ControlsEnabled = false;
             player.ExternalVelocity = Vector3.zero;
             hud.Flash("WHOOPS!");
+            AudioManager.Play(Sfx.Fall);
             bool record = SaveData.SubmitScore(LevelId, Score);
             StartCoroutine(ShowGameOverDelayed(record));
         }
@@ -192,6 +204,7 @@ namespace AutumnGuys
         IEnumerator ShowGameOverDelayed(bool record)
         {
             yield return new WaitForSeconds(1.2f);
+            AudioManager.Play(record ? Sfx.NewRecord : Sfx.GameOver, 1f, 0f);
             SetCursorLocked(false);
             hud.ShowGameOver(ElapsedTime, BonusTime, BonusCount, Score, SaveData.GetBestScore(LevelId), record);
         }

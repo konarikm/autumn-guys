@@ -44,6 +44,7 @@ namespace AutumnGuys
         IEnumerator FallRoutine()
         {
             triggered = true;
+            AudioManager.Play(Sfx.TileShake, 0.7f, 0.1f);
             float t = 0f;
             while (t < shakeTime)
             {
@@ -56,6 +57,7 @@ namespace AutumnGuys
             transform.position = startPos;
             rb.isKinematic = false;
             rb.AddTorque(Random.insideUnitSphere * 2f, ForceMode.VelocityChange);
+            AudioManager.Play(Sfx.TileFall, 0.6f, 0.1f);
 
             yield return new WaitForSeconds(respawnTime);
 

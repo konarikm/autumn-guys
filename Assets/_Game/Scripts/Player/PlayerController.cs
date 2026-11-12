@@ -118,6 +118,9 @@ namespace AutumnGuys
 
             CheckGround();
 
+            // Landing thump after a real jump/fall (not tiny steps).
+            if (grounded && airTime > 0.3f) AudioManager.Play(Sfx.Land, Mathf.Clamp01(airTime), 0.08f);
+
             if (grounded) { coyoteTimer = coyoteTime; airTime = 0f; }
             else { coyoteTimer -= dt; airTime += dt; }
 
@@ -222,6 +225,7 @@ namespace AutumnGuys
             stunTimer = Mathf.Max(stunTimer, stunDuration);
             grounded = false;
             PlayAnim("fall");
+            AudioManager.Play(Sfx.Hit);
         }
 
         public void Teleport(Vector3 position, Quaternion rotation)

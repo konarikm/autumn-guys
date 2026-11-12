@@ -115,6 +115,7 @@ namespace AutumnGuys
             colors.selectedColor = new Color(1f, 0.85f, 0.6f);
             colors.pressedColor = new Color(0.8f, 0.6f, 0.4f);
             btn.colors = colors;
+            btn.onClick.AddListener(() => AudioManager.Play(Sfx.Click, 0.8f, 0.03f));
             btn.onClick.AddListener(onClick);
 
             var shadow = rt.gameObject.AddComponent<Shadow>();

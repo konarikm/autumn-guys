@@ -1,0 +1,19 @@
+Audio credits – Autumn Guys
+
+SOUND EFFECTS
+  Kenney (www.kenney.nl) – Creative Commons Zero (CC0), no attribution required
+    Interface Sounds  – Click, Tick, Checkpoint, Reveal, Safe, Pickup
+    Impact Sounds     – Land, Hit, TileShake, TileFall, AcornImpact
+    Digital Audio     – Countdown, Go, Bounce, Fall, GameOver
+    Music Jingles     – Finish (jingles_STEEL07), NewRecord (jingles_PIZZI07)
+  Sfx/Wind/wind_gust.wav – synthesised for this project (filtered noise)
+
+MUSIC (all from OpenGameArt.org)
+  Music/MainMenu.mp3      – "Ice Cream Date" (icd_repeating) by Djaro (DjaroGames) – CC0
+                            https://opengameart.org/content/ice-cream-date
+  Music/AutumnRush.wav    – "Happy Plains" by Erick Soto 624 – CC0
+                            https://opengameart.org/content/happy-plains
+  Music/LeafPile.wav      – "Funky House" by Of Far Different Nature – CC0
+                            https://opengameart.org/content/funky-house
+  Music/HarvestMemory.mp3 – "Summers" by symphony – CC0
+                            https://opengameart.org/content/summers
