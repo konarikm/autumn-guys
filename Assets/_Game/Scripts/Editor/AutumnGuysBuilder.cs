@@ -146,7 +146,7 @@ namespace AutumnGuys.EditorTools
 
         static void ConfigureSprites()
         {
-            foreach (var path in new[] { Root + "/Resources/TeamLogo.png", Root + "/Resources/GameTitle.png" })
+            foreach (var path in new[] { Root + "/Resources/TeamLogo.png" })
             {
                 if (AssetImporter.GetAtPath(path) is not TextureImporter ti) continue;
                 if (ti.textureType == TextureImporterType.Sprite) continue;
@@ -286,6 +286,25 @@ namespace AutumnGuys.EditorTools
             leaf.SetFloat("_Cull", 0f);
             EditorUtility.SetDirty(leaf);
             mats["Leaf"] = leaf;
+
+            // Leaf Pile tiles: leaf cards with per-leaf vertex colours (Particles/Lit multiplies vertex colour),
+            // alpha-clipped and double sided. White base colour so LeafTile can tint it towards the warning colour.
+            string pileLeavesPath = $"{MaterialsDir}/LeafPileLeaves.mat";
+            var pileLeaves = AssetDatabase.LoadAssetAtPath<Material>(pileLeavesPath);
+            if (pileLeaves == null)
+            {
+                pileLeaves = new Material(Shader.Find("Universal Render Pipeline/Particles/Lit"));
+                AssetDatabase.CreateAsset(pileLeaves, pileLeavesPath);
+            }
+            pileLeaves.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(Root + "/Textures/Leaf.png"));
+            pileLeaves.SetColor("_BaseColor", Color.white);
+            pileLeaves.SetFloat("_AlphaClip", 1f);
+            pileLeaves.SetFloat("_Cutoff", 0.5f);
+            pileLeaves.EnableKeyword("_ALPHATEST_ON");
+            pileLeaves.SetFloat("_Cull", 0f);
+            pileLeaves.SetFloat("_Smoothness", 0.15f);
+            EditorUtility.SetDirty(pileLeaves);
+            mats["LeafPileLeaves"] = pileLeaves;
 
             string confPath = $"{MaterialsDir}/Confetti.mat";
             var conf = AssetDatabase.LoadAssetAtPath<Material>(confPath);
@@ -606,6 +625,7 @@ namespace AutumnGuys.EditorTools
             SetupLighting();
 
             var hexMesh = BuildHexMeshAsset();
+            var leafPileMeshes = BuildLeafPileMeshes();
             var acornPrefab = BuildAcornPrefab("FallingAcorn", 1.4f, mats["AcornBody"], mats["AcornCap"], true);
             var goldenPrefab = BuildAcornPrefab("GoldenAcorn", 0.8f, mats["GoldenAcorn"], mats["GoldenAcorn"], false);
 
@@ -620,7 +640,8 @@ namespace AutumnGuys.EditorTools
                 var floorRoot = new GameObject($"Floor_{f}").transform;
                 floorRoot.SetParent(arenaRoot, false);
                 string m = tileMats[f % tileMats.Length];
-                BuildHexFloor(floorRoot, f, LeafFloorHeights[f], hexMesh, mats[m], mats[m + "Mound"], rng);
+                BuildHexFloor(floorRoot, f, LeafFloorHeights[f], hexMesh, mats[m], mats[m + "Mound"],
+                    leafPileMeshes[f % leafPileMeshes.Length], rng);
             }
 
             var start = new GameObject("StartPoint").transform;
@@ -677,7 +698,8 @@ namespace AutumnGuys.EditorTools
             Save(scene, SceneNames.LeafPile);
         }
 
-        static void BuildHexFloor(Transform parent, int floor, float topY, Mesh hexMesh, Material tileMat, Material moundMat, System.Random rng)
+        static void BuildHexFloor(Transform parent, int floor, float topY, Mesh hexMesh, Material tileMat, Material moundMat,
+            Mesh[] leafVariants, System.Random rng)
         {
             float sqrt3 = Mathf.Sqrt(3f);
             for (int q = -HexRings; q <= HexRings; q++)
@@ -712,8 +734,126 @@ namespace AutumnGuys.EditorTools
                     mound.transform.localRotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
                     mound.transform.localScale = new Vector3(s, 0.22f, s * 0.92f);
                     mound.GetComponent<Renderer>().sharedMaterial = moundMat;
+
+                    // Pile of individual leaves over the mound – hides the hexagon outline (visual only).
+                    var leaves = new GameObject("Leaves");
+                    leaves.transform.SetParent(tile.transform, false);
+                    leaves.transform.localPosition = new Vector3(0f, HexHeight * 0.5f, 0f);
+                    leaves.transform.localRotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
+                    leaves.AddComponent<MeshFilter>().sharedMesh = leafVariants[rng.Next(leafVariants.Length)];
+                    var leavesRenderer = leaves.AddComponent<MeshRenderer>();
+                    leavesRenderer.sharedMaterial = mats["LeafPileLeaves"];
+                    leavesRenderer.shadowCastingMode = ShadowCastingMode.Off;
                 }
             }
+        }
+
+        const int LeafPileVariants = 4;
+        const int LeavesPerPile = 18;
+        const float MoundDomeHeight = 0.11f;   // sphere mound scaled to 0.22 → dome rises 0.11 above the tile top
+        const float MoundDomeRadius = 1.12f;
+
+        /// <summary>Leaf colours per floor (top orange, middle red, bottom gold).</summary>
+        static readonly Color[][] LeafPalettes =
+        {
+            new[] { new Color(0.98f, 0.55f, 0.15f), new Color(0.95f, 0.4f, 0.1f), new Color(1f, 0.7f, 0.25f), new Color(0.85f, 0.32f, 0.1f) },
+            new[] { new Color(0.82f, 0.2f, 0.1f), new Color(0.66f, 0.12f, 0.08f), new Color(0.92f, 0.36f, 0.14f), new Color(0.95f, 0.5f, 0.15f) },
+            new[] { new Color(1f, 0.8f, 0.25f), new Color(0.96f, 0.66f, 0.16f), new Color(0.88f, 0.84f, 0.35f), new Color(1f, 0.56f, 0.16f) },
+        };
+
+        /// <summary>
+        /// A few random leaf-pile meshes per floor (shared by all tiles of that floor): overlapping leaf cards folded along
+        /// the midrib, following the mound's dome, coloured per leaf through vertex colours.
+        /// </summary>
+        static Mesh[][] BuildLeafPileMeshes()
+        {
+            EnsureFolder(MeshesDir);
+            var rng = new System.Random(4321);
+            float R() => (float)rng.NextDouble();
+
+            var result = new Mesh[LeafPalettes.Length][];
+            for (int f = 0; f < LeafPalettes.Length; f++)
+            {
+                result[f] = new Mesh[LeafPileVariants];
+                for (int v = 0; v < LeafPileVariants; v++)
+                {
+                    var verts = new List<Vector3>();
+                    var normals = new List<Vector3>();
+                    var uvs = new List<Vector2>();
+                    var colors = new List<Color>();
+                    var tris = new List<int>();
+
+                    for (int i = 0; i < LeavesPerPile; i++)
+                    {
+                        // Spread over the tile (uniform over the disc), bigger leaves first so small ones sit on top.
+                        float dist = Mathf.Sqrt(R()) * 1.08f;
+                        float ang = R() * Mathf.PI * 2f;
+                        var centre = new Vector3(Mathf.Cos(ang) * dist, 0f, Mathf.Sin(ang) * dist);
+                        float k = Mathf.Clamp01(dist / MoundDomeRadius);
+                        centre.y = MoundDomeHeight * (1f - k * k) + 0.012f + i * 0.004f;
+
+                        float size = Mathf.Lerp(0.95f, 0.6f, i / (float)LeavesPerPile) * (0.85f + R() * 0.3f);
+                        // Tilt outward with the dome slope plus a little randomness.
+                        var outward = new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang));
+                        var tilt = Quaternion.AngleAxis(k * 14f + R() * 8f, Vector3.Cross(Vector3.up, outward));
+                        var rot = tilt * Quaternion.Euler(0f, R() * 360f, 0f);
+
+                        var baseCol = LeafPalettes[f][rng.Next(LeafPalettes[f].Length)];
+                        float shade = 0.85f + R() * 0.2f;
+                        var col = new Color(baseCol.r * shade, baseCol.g * shade, baseCol.b * shade, 1f);
+                        AddFoldedLeaf(verts, normals, uvs, colors, tris, centre, rot, size, size * 0.06f, col);
+                    }
+
+                    var mesh = new Mesh { name = $"LeafPile_{f}_{v}" };
+                    mesh.SetVertices(verts);
+                    mesh.SetNormals(normals);
+                    mesh.SetUVs(0, uvs);
+                    mesh.SetColors(colors);
+                    mesh.SetTriangles(tris, 0);
+                    mesh.RecalculateBounds();
+                    result[f][v] = SaveMeshAsset(mesh, $"{MeshesDir}/LeafPile_{f}_{v}.asset");
+                }
+            }
+            return result;
+        }
+
+        /// <summary>Leaf card (texture square) folded along its vertical midrib: 6 vertices, 4 triangles.</summary>
+        static void AddFoldedLeaf(List<Vector3> verts, List<Vector3> normals, List<Vector2> uvs, List<Color> colors, List<int> tris,
+            Vector3 centre, Quaternion rot, float size, float fold, Color color)
+        {
+            float h = size * 0.5f;
+            int c = verts.Count;
+            Vector3[] local =
+            {
+                new Vector3(-h, 0f, -h), new Vector3(0f, fold, -h), new Vector3(h, 0f, -h),
+                new Vector3(-h, 0f, h), new Vector3(0f, fold, h), new Vector3(h, 0f, h),
+            };
+            Vector2[] uv = { new Vector2(0, 0), new Vector2(0.5f, 0), new Vector2(1, 0), new Vector2(0, 1), new Vector2(0.5f, 1), new Vector2(1, 1) };
+            var leftN = rot * new Vector3(-fold, h, 0f).normalized;
+            var rightN = rot * new Vector3(fold, h, 0f).normalized;
+            for (int i = 0; i < 6; i++)
+            {
+                verts.Add(centre + rot * local[i]);
+                uvs.Add(uv[i]);
+                colors.Add(color);
+                normals.Add(i % 3 == 0 ? leftN : i % 3 == 2 ? rightN : rot * Vector3.up);
+            }
+            tris.AddRange(new[] { c, c + 3, c + 4, c, c + 4, c + 1, c + 1, c + 4, c + 5, c + 1, c + 5, c + 2 });
+        }
+
+        /// <summary>Saves a generated mesh as an asset, updating the existing asset in place (keeps references).</summary>
+        static Mesh SaveMeshAsset(Mesh mesh, string path)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (existing == null)
+            {
+                AssetDatabase.CreateAsset(mesh, path);
+                return mesh;
+            }
+            EditorUtility.CopySerialized(mesh, existing);
+            Object.DestroyImmediate(mesh);
+            EditorUtility.SetDirty(existing);
+            return existing;
         }
 
         /// <summary>Hexagonal prism (pointy-top) with flat-shaded sides, saved as a mesh asset.</summary>
