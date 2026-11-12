@@ -8,7 +8,7 @@ namespace AutumnGuys
 {
     public class MainMenu : MonoBehaviour
     {
-        public string levelScene = SceneNames.Level01;
+        public string levelScene = SceneNames.AutumnRush;
         public string leafPileScene = SceneNames.LeafPile;
         public string memoryScene = SceneNames.HarvestMemory;
 
@@ -46,7 +46,7 @@ namespace AutumnGuys
 
             // Minigame selection – same layout as the main panel
             minigamePanel = UIFactory.Stretch(canvas.transform, "MinigamePanel").gameObject;
-            AddMinigame(minigamePanel.transform, "OBSTACLE RACE", levelScene, MenuTop,
+            AddMinigame(minigamePanel.transform, "AUTUMN RUSH", levelScene, MenuTop,
                 "Best time: " + SaveData.FormatTime(SaveData.GetBestTime(levelScene)));
             AddMinigame(minigamePanel.transform, "LEAF PILE", leafPileScene, MenuTop - MenuStep,
                 "Best score: " + SaveData.FormatTime(SaveData.GetBestScore(leafPileScene)));
@@ -65,9 +65,9 @@ namespace AutumnGuys
                 "WASD / arrows – move\n" +
                 "Space – jump\n" +
                 "Mouse – camera\n" +
-                "R – back to checkpoint (race)\n" +
+                "R – back to checkpoint (Autumn Rush)\n" +
                 "Esc – pause\n\n" +
-                "Obstacle Race: reach the finish as fast as you can!\n" +
+                "Autumn Rush: reach the finish as fast as you can!\n" +
                 "Leaf Pile: the leaf piles fall away under your feet –\n" +
                 "survive as long as you can and grab golden acorns (+5 s)!\n" +
                 "Harvest Memory: remember the icons, then stand on the right one!", 34, UIFactory.Cream);

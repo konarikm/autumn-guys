@@ -10,7 +10,7 @@ using UnityEngine.SceneManagement;
 namespace AutumnGuys.EditorTools
 {
     /// <summary>
-    /// Generates the whole game skeleton: materials, prefabs, Splash / MainMenu / Level01 scenes and build settings.
+    /// Generates the whole game skeleton: materials, prefabs, Splash, MainMenu and minigame scenes and build settings.
     /// Menu: Autumn Guys/...
     /// WARNING: rebuilding a scene overwrites manual changes made to it.
     /// </summary>
@@ -48,7 +48,7 @@ namespace AutumnGuys.EditorTools
         public static void BuildAll()
         {
             if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Autumn Guys",
-                    "Regenerate materials, prefabs and the Splash, MainMenu, Level01, LeafPile and HarvestMemory scenes?\n\nManual changes in these scenes will be overwritten!",
+                    "Regenerate materials, prefabs and the Splash, MainMenu, AutumnRush, LeafPile and HarvestMemory scenes?\n\nManual changes in these scenes will be overwritten!",
                     "Yes, regenerate", "Cancel"))
                 return;
 
@@ -68,10 +68,10 @@ namespace AutumnGuys.EditorTools
             Debug.Log("[AutumnGuys] Build Everything finished.");
         }
 
-        [MenuItem("Autumn Guys/Rebuild Level01 only", priority = 20)]
+        [MenuItem("Autumn Guys/Rebuild AutumnRush only", priority = 20)]
         public static void BuildLevelOnly()
         {
-            if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Autumn Guys", "Overwrite the Level01 scene?", "Yes", "Cancel")) return;
+            if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Autumn Guys", "Overwrite the AutumnRush scene?", "Yes", "Cancel")) return;
             Prepare();
             BuildLevelScene();
             ConfigureBuildSettings();
@@ -477,7 +477,7 @@ namespace AutumnGuys.EditorTools
 
         static void BuildLevelScene()
         {
-            var scene = NewScene(SceneNames.Level01);
+            var scene = NewScene(SceneNames.AutumnRush);
             SetupLighting();
 
             var course = new GameObject("Course").transform;
@@ -580,7 +580,7 @@ namespace AutumnGuys.EditorTools
             gm.startPoint = start;
             gm.killHeight = -10f;
 
-            Save(scene, SceneNames.Level01);
+            Save(scene, SceneNames.AutumnRush);
         }
 
         // ───────────────────────────── Leaf Pile minigame ─────────────────────────────
@@ -1372,7 +1372,7 @@ namespace AutumnGuys.EditorTools
         static void ConfigureBuildSettings()
         {
             var scenes = new List<EditorBuildSettingsScene>();
-            foreach (var name in new[] { SceneNames.Splash, SceneNames.MainMenu, SceneNames.Level01, SceneNames.LeafPile, SceneNames.HarvestMemory })
+            foreach (var name in new[] { SceneNames.Splash, SceneNames.MainMenu, SceneNames.AutumnRush, SceneNames.LeafPile, SceneNames.HarvestMemory })
             {
                 string path = $"{ScenesDir}/{name}.unity";
                 if (File.Exists(path)) scenes.Add(new EditorBuildSettingsScene(path, true));

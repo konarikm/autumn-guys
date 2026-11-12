@@ -12,7 +12,7 @@ EditorBuildSettings:
     path: Assets/_Game/Scenes/MainMenu.unity
     guid: a8209803aa4024eea8baff5260baf37c
   - enabled: 1
-    path: Assets/_Game/Scenes/Level01.unity
+    path: Assets/_Game/Scenes/AutumnRush.unity
     guid: a99d5bd7e73a4423abf466904ab5f370
   - enabled: 1
     path: Assets/_Game/Scenes/LeafPile.unity

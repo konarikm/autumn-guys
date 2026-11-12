@@ -3226,7 +3226,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d32610999f0d4c98986b016e930fcd3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AutumnGuys.MainMenu
-  levelScene: Level01
+  levelScene: AutumnRush
   leafPileScene: LeafPile
   memoryScene: HarvestMemory
 --- !u!4 &1786962886

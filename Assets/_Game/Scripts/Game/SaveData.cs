@@ -46,7 +46,7 @@ namespace AutumnGuys
     {
         public const string Splash = "Splash";
         public const string MainMenu = "MainMenu";
-        public const string Level01 = "Level01";
+        public const string AutumnRush = "AutumnRush";
         public const string LeafPile = "LeafPile";
         public const string HarvestMemory = "HarvestMemory";
     }
