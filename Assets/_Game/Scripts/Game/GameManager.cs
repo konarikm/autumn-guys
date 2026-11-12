@@ -33,6 +33,8 @@ namespace AutumnGuys
         public GameState State { get; private set; } = GameState.Countdown;
         public float ElapsedTime { get; private set; }
         public int FallCount { get; private set; }
+        /// <summary>Index of the last checkpoint reached (0 = none yet).</summary>
+        public int CheckpointIndex => currentCheckpoint != null ? currentCheckpoint.index : 0;
         public string LevelId => SceneManager.GetActiveScene().name;
 
         public bool IsSurvival => mode == LevelMode.Survival;
@@ -231,14 +233,14 @@ namespace AutumnGuys
         public void Restart()
         {
             Time.timeScale = 1f;
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            SceneLoader.Load(SceneManager.GetActiveScene().name);
         }
 
         public void GoToMenu()
         {
             Time.timeScale = 1f;
             SetCursorLocked(false);
-            SceneManager.LoadScene(SceneNames.MainMenu);
+            SceneLoader.Load(SceneNames.MainMenu);
         }
 
         public static void SetCursorLocked(bool locked)

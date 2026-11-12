@@ -40,6 +40,15 @@ namespace AutumnGuys
         public float firstRoundDelay = 0.5f;
         public float pauseBetweenRounds = 1.2f;
 
+        public enum Phase { Waiting, Reveal, Choose, Resolve }
+
+        /// <summary>Current step of the round (read by the HUD).</summary>
+        public Phase CurrentPhase { get; private set; }
+        /// <summary>0→1 progress through the current timed phase (Reveal / Choose).</summary>
+        public float PhaseProgress01 { get; private set; }
+        /// <summary>Icon to find this round (null until it is announced).</summary>
+        public Icon CurrentTarget { get; private set; }
+
         MemoryTile[] tiles;
         GameObject displayIcon;
         GameManager gm;
@@ -79,6 +88,8 @@ namespace AutumnGuys
             AssignIcons(target, safeCount, gm.Rounds + 1 >= awayFromPlayerFromRound);
 
             // 1) Memorise
+            CurrentTarget = null;
+            CurrentPhase = Phase.Reveal;
             foreach (var t in tiles) t.ShowIcon(true);
             AudioManager.Play(Sfx.Reveal, 1f, 0f);
             Hud?.ShowPrompt("Remember the icons!");
@@ -88,12 +99,15 @@ namespace AutumnGuys
             // 2) Hide and announce the target
             foreach (var t in tiles) t.ShowIcon(false);
             var icon = icons[target];
+            CurrentTarget = icon;
+            CurrentPhase = Phase.Choose;
             Hud?.ShowPrompt($"Find the <color=#{ColorUtility.ToHtmlStringRGB(icon.color)}>{icon.name}</color>!");
             ShowDisplay(icon.prefab);
 
             for (float left = chooseTime; left > 0f; left -= Time.deltaTime)
             {
                 if (!Running) yield break;
+                PhaseProgress01 = 1f - left / chooseTime;
                 string n = Mathf.CeilToInt(left).ToString();
                 if (n != lastCountdown)
                 {
@@ -109,6 +123,8 @@ namespace AutumnGuys
             if (!Running) yield break;
 
             // 3) Drop the wrong tiles, reveal the right ones
+            CurrentPhase = Phase.Resolve;
+            PhaseProgress01 = 1f;
             AudioManager.Play(Sfx.TileFall, 1f, 0f);
             float dropDuration = 0f;
             foreach (var t in tiles)
@@ -137,13 +153,20 @@ namespace AutumnGuys
             // 4) Wait for the floor to come back
             foreach (var t in tiles) if (t.IconIndex == target) t.ShowIcon(false);
             while (Running && AnyTileDown()) yield return null;
+            CurrentPhase = Phase.Waiting;
+            CurrentTarget = null;
         }
 
         string lastCountdown;
 
         IEnumerator WaitRunning(float seconds)
         {
-            for (float t = 0f; t < seconds && Running; t += Time.deltaTime) yield return null;
+            for (float t = 0f; t < seconds && Running; t += Time.deltaTime)
+            {
+                PhaseProgress01 = t / seconds;
+                yield return null;
+            }
+            PhaseProgress01 = 1f;
         }
 
         bool AnyTileDown()

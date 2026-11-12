@@ -1,7 +1,6 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace AutumnGuys
@@ -40,7 +39,7 @@ namespace AutumnGuys
             float t = 0f;
             while (t < holdTime && !SkipPressed()) { t += Time.deltaTime; yield return null; }
             yield return Fade(1f, 0f);
-            SceneManager.LoadScene(SceneNames.MainMenu);
+            SceneLoader.Load(SceneNames.MainMenu);
         }
 
         IEnumerator Fade(float from, float to)

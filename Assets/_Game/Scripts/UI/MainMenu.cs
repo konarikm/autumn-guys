@@ -1,7 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace AutumnGuys
@@ -17,8 +16,6 @@ namespace AutumnGuys
         const float MenuX = -560f;
         const float MenuTop = -40f;
         const float MenuStep = 120f;
-        static readonly Color ButtonColor = new Color(0.66f, 0.17f, 0.08f); // deep autumn red
-        static readonly Color TextColor = new Color(1f, 0.83f, 0.3f);       // golden yellow
 
         GameObject mainPanel;
         GameObject minigamePanel;
@@ -32,11 +29,7 @@ namespace AutumnGuys
             var canvas = UIFactory.CreateCanvas("MenuCanvas");
 
             // Title
-            var titleRt = UIFactory.CreateRect(canvas.transform, "Title", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0, -170), new Vector2(1300, 234));
-            var title = titleRt.gameObject.AddComponent<Image>();
-            title.sprite = UIFactory.LoadSprite("GameTitle");
-            title.preserveAspect = true;
+            TitleLogo.Create(canvas.transform, "AUTUMN GUYS", new Vector2(0, -190), 200);
 
             // Main panel
             mainPanel = UIFactory.Stretch(canvas.transform, "MainPanel").gameObject;
@@ -59,7 +52,10 @@ namespace AutumnGuys
             controlsPanel = UIFactory.Stretch(canvas.transform, "ControlsPanel").gameObject;
             var bg = UIFactory.CreateRect(controlsPanel.transform, "Box", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 new Vector2(0, -80), new Vector2(1300, 780));
-            bg.gameObject.AddComponent<Image>().color = new Color(0.2f, 0.1f, 0.05f, 0.85f);
+            var bgImage = bg.gameObject.AddComponent<Image>();
+            bgImage.sprite = UIFactory.RoundedSprite;
+            bgImage.type = Image.Type.Sliced;
+            bgImage.color = UIFactory.CardColor;
             var txt = UIFactory.CreateText(bg, "Text",
                 "CONTROLS\n\n" +
                 "WASD / arrows – move\n" +
@@ -79,7 +75,7 @@ namespace AutumnGuys
 
         void AddMinigame(Transform parent, string label, string scene, float y, string bestText)
         {
-            MenuButton(parent, label, y, () => SceneManager.LoadScene(scene));
+            MenuButton(parent, label, y, () => SceneLoader.Load(scene));
             var best = UIFactory.CreateText(parent, label + "_Best", bestText, 38, UIFactory.Cream, TextAnchor.MiddleLeft);
             best.font = UIFactory.MenuFont;
             best.fontStyle = FontStyle.Normal;
@@ -94,24 +90,7 @@ namespace AutumnGuys
             return Style(UIFactory.CreateButton(parent, label, new Vector2(MenuX, y), onClick, ButtonSize));
         }
 
-        static Button Style(Button btn)
-        {
-            btn.GetComponent<Image>().color = ButtonColor;
-            // Tints multiply the image colour, so dim it a bit normally and go full brightness when selected.
-            var colors = btn.colors;
-            colors.normalColor = new Color(0.82f, 0.82f, 0.82f);
-            colors.highlightedColor = Color.white;
-            colors.selectedColor = Color.white;
-            colors.pressedColor = new Color(0.65f, 0.65f, 0.65f);
-            btn.colors = colors;
-
-            var text = btn.GetComponentInChildren<Text>();
-            text.font = UIFactory.MenuFont;
-            text.fontStyle = FontStyle.Normal;
-            text.fontSize = 52;
-            text.color = TextColor;
-            return btn;
-        }
+        static Button Style(Button btn) => UIFactory.StyleButton(btn);
 
         void Update()
         {
