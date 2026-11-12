@@ -210,6 +210,8 @@ namespace AutumnGuys.EditorTools
             {
                 mat.EnableKeyword("_EMISSION");
                 mat.SetColor("_EmissionColor", emission.Value);
+                // Without this the flags stay EmissiveIsBlack and URP's material validation strips _EMISSION.
+                mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             }
             EditorUtility.SetDirty(mat);
             mats[name] = mat;
@@ -267,6 +269,7 @@ namespace AutumnGuys.EditorTools
             leafIcon.SetFloat("_Smoothness", 0.2f);
             leafIcon.EnableKeyword("_EMISSION");
             leafIcon.SetColor("_EmissionColor", new Color(0.25f, 0.18f, 0.02f));
+            leafIcon.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             leafIcon.SetTexture("_EmissionMap", leafIcon.GetTexture("_BaseMap"));
             EditorUtility.SetDirty(leafIcon);
             mats["LeafIcon"] = leafIcon;
