@@ -16,6 +16,17 @@ namespace AutumnGuys
         static Font font;
         public static Font Font => font != null ? font : (font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"));
 
+        static Font menuFont;
+        /// <summary>Chunky display font for menu buttons (Lilita One, SIL OFL); falls back to the default font.</summary>
+        public static Font MenuFont
+        {
+            get
+            {
+                if (menuFont == null) menuFont = Resources.Load<Font>("Fonts/LilitaOne-Regular");
+                return menuFont != null ? menuFont : Font;
+            }
+        }
+
         public static Canvas CreateCanvas(string name, int sortOrder = 0)
         {
             var go = new GameObject(name, typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));

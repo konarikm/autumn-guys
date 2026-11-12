@@ -101,6 +101,18 @@ namespace AutumnGuys.EditorTools
             Debug.Log("[AutumnGuys] HarvestMemory scene built.");
         }
 
+        [MenuItem("Autumn Guys/Rebuild MainMenu only", priority = 23)]
+        public static void BuildMenuOnly()
+        {
+            if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Autumn Guys", "Overwrite the MainMenu scene?", "Yes", "Cancel")) return;
+            if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            Prepare();
+            BuildMenuScene();
+            ConfigureBuildSettings();
+            AssetDatabase.SaveAssets();
+            Debug.Log("[AutumnGuys] MainMenu scene built.");
+        }
+
         [MenuItem("Autumn Guys/Convert Standard materials to URP", priority = 40)]
         public static void ConvertStandardMaterialsMenu() => ConvertStandardMaterials();
 
@@ -218,6 +230,10 @@ namespace AutumnGuys.EditorTools
             Mat("Finish", new Color(1f, 0.9f, 0.4f), 0.3f, new Color(0.4f, 0.3f, 0.05f));
             Mat("MushroomCap", new Color(0.85f, 0.12f, 0.1f), 0.4f);
             Mat("MushroomStem", new Color(0.95f, 0.9f, 0.8f));
+
+            // Main menu trees – darker reds so the orange game title stands out against them
+            Mat("MenuLeavesCrimson", new Color(0.58f, 0.09f, 0.1f));
+            Mat("MenuLeavesWine", new Color(0.4f, 0.07f, 0.14f));
 
             // Leaf Pile minigame
             Mat("LeafOrange", new Color(0.95f, 0.5f, 0.12f));
@@ -430,7 +446,26 @@ namespace AutumnGuys.EditorTools
                 float r = 9f + (float)rng.NextDouble() * 4f;
                 var p = new Vector3(Mathf.Cos(a) * r, 0, Mathf.Sin(a) * r + 4f);
                 if (p.z < 2f) continue; // keep the front open for the camera
+                // Keep the trunk on the island (radius 15) with a margin for the trunk itself.
+                const float maxRadius = 13.5f;
+                if (p.magnitude > maxRadius) p = p.normalized * maxRadius;
                 SpawnTree(env, p, 6f + (float)rng.NextDouble() * 5f, rng);
+            }
+
+            // Recolour the tree leaves (ForestPack "*_Leaves" materials) so they don't blend with the title.
+            var menuLeaves = new[] { mats["MenuLeavesCrimson"], mats["MenuLeavesWine"] };
+            int treeIndex = 0;
+            foreach (Transform child in env)
+            {
+                var leafMat = menuLeaves[treeIndex++ % menuLeaves.Length];
+                foreach (var r in child.GetComponentsInChildren<Renderer>())
+                {
+                    var shared = r.sharedMaterials;
+                    bool changed = false;
+                    for (int i = 0; i < shared.Length; i++)
+                        if (shared[i] != null && shared[i].name.EndsWith("_Leaves")) { shared[i] = leafMat; changed = true; }
+                    if (changed) r.sharedMaterials = shared;
+                }
             }
 
             var cam = CreateCamera(new Vector3(0f, 1.6f, -6f), Quaternion.Euler(6f, 0f, 0f));

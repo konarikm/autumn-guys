@@ -13,6 +13,12 @@ namespace AutumnGuys
         public string memoryScene = SceneNames.HarvestMemory;
 
         static readonly Vector2 ButtonSize = new Vector2(520, 90);
+        // Button column: x offset from the screen centre, y of the first button and spacing (1920x1080 reference).
+        const float MenuX = -560f;
+        const float MenuTop = -40f;
+        const float MenuStep = 120f;
+        static readonly Color ButtonColor = new Color(0.66f, 0.17f, 0.08f); // deep autumn red
+        static readonly Color TextColor = new Color(1f, 0.83f, 0.3f);       // golden yellow
 
         GameObject mainPanel;
         GameObject minigamePanel;
@@ -34,20 +40,20 @@ namespace AutumnGuys
 
             // Main panel
             mainPanel = UIFactory.Stretch(canvas.transform, "MainPanel").gameObject;
-            UIFactory.CreateButton(mainPanel.transform, "PLAY", new Vector2(-560, 40), () => ShowPanel(minigamePanel), ButtonSize);
-            UIFactory.CreateButton(mainPanel.transform, "CONTROLS", new Vector2(-560, -80), () => ShowPanel(controlsPanel), ButtonSize);
-            UIFactory.CreateButton(mainPanel.transform, "EXIT GAME", new Vector2(-560, -200), Quit, ButtonSize);
+            MenuButton(mainPanel.transform, "PLAY", MenuTop, () => ShowPanel(minigamePanel));
+            MenuButton(mainPanel.transform, "CONTROLS", MenuTop - MenuStep, () => ShowPanel(controlsPanel));
+            MenuButton(mainPanel.transform, "EXIT GAME", MenuTop - MenuStep * 2, Quit);
 
             // Minigame selection – same layout as the main panel
             minigamePanel = UIFactory.Stretch(canvas.transform, "MinigamePanel").gameObject;
-            AddMinigame(minigamePanel.transform, "OBSTACLE RACE", levelScene, 40,
+            AddMinigame(minigamePanel.transform, "OBSTACLE RACE", levelScene, MenuTop,
                 "Best time: " + SaveData.FormatTime(SaveData.GetBestTime(levelScene)));
-            AddMinigame(minigamePanel.transform, "LEAF PILE", leafPileScene, -80,
+            AddMinigame(minigamePanel.transform, "LEAF PILE", leafPileScene, MenuTop - MenuStep,
                 "Best score: " + SaveData.FormatTime(SaveData.GetBestScore(leafPileScene)));
             int bestRounds = Mathf.RoundToInt(SaveData.GetBestScore(memoryScene));
-            AddMinigame(minigamePanel.transform, "HARVEST MEMORY", memoryScene, -200,
+            AddMinigame(minigamePanel.transform, "HARVEST MEMORY", memoryScene, MenuTop - MenuStep * 2,
                 "Best: " + (bestRounds > 0 ? $"{bestRounds} {(bestRounds == 1 ? "round" : "rounds")}" : "--"));
-            UIFactory.CreateButton(minigamePanel.transform, "BACK", new Vector2(-560, -320), () => ShowPanel(mainPanel), ButtonSize);
+            MenuButton(minigamePanel.transform, "BACK", MenuTop - MenuStep * 3, () => ShowPanel(mainPanel));
 
             // Controls panel
             controlsPanel = UIFactory.Stretch(canvas.transform, "ControlsPanel").gameObject;
@@ -66,18 +72,45 @@ namespace AutumnGuys
                 "survive as long as you can and grab golden acorns (+5 s)!\n" +
                 "Harvest Memory: remember the icons, then stand on the right one!", 34, UIFactory.Cream);
             txt.rectTransform.offsetMin = new Vector2(0, 110);
-            UIFactory.CreateButton(bg, "BACK", new Vector2(0, -310), () => ShowPanel(mainPanel));
+            Style(UIFactory.CreateButton(bg, "BACK", new Vector2(0, -310), () => ShowPanel(mainPanel)));
 
             ShowPanel(mainPanel);
         }
 
         void AddMinigame(Transform parent, string label, string scene, float y, string bestText)
         {
-            UIFactory.CreateButton(parent, label, new Vector2(-560, y), () => SceneManager.LoadScene(scene), ButtonSize);
-            var best = UIFactory.CreateText(parent, label + "_Best", bestText, 34, UIFactory.Cream, TextAnchor.MiddleLeft);
+            MenuButton(parent, label, y, () => SceneManager.LoadScene(scene));
+            var best = UIFactory.CreateText(parent, label + "_Best", bestText, 38, UIFactory.Cream, TextAnchor.MiddleLeft);
+            best.font = UIFactory.MenuFont;
+            best.fontStyle = FontStyle.Normal;
             best.rectTransform.anchorMin = best.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             best.rectTransform.sizeDelta = new Vector2(600, 90);
-            best.rectTransform.anchoredPosition = new Vector2(-560 + ButtonSize.x * 0.5f + 40 + 300, y);
+            best.rectTransform.anchoredPosition = new Vector2(MenuX + ButtonSize.x * 0.5f + 40 + 300, y);
+        }
+
+        /// <summary>Menu button in the menu style: autumn red with golden text in the display font.</summary>
+        Button MenuButton(Transform parent, string label, float y, UnityEngine.Events.UnityAction onClick)
+        {
+            return Style(UIFactory.CreateButton(parent, label, new Vector2(MenuX, y), onClick, ButtonSize));
+        }
+
+        static Button Style(Button btn)
+        {
+            btn.GetComponent<Image>().color = ButtonColor;
+            // Tints multiply the image colour, so dim it a bit normally and go full brightness when selected.
+            var colors = btn.colors;
+            colors.normalColor = new Color(0.82f, 0.82f, 0.82f);
+            colors.highlightedColor = Color.white;
+            colors.selectedColor = Color.white;
+            colors.pressedColor = new Color(0.65f, 0.65f, 0.65f);
+            btn.colors = colors;
+
+            var text = btn.GetComponentInChildren<Text>();
+            text.font = UIFactory.MenuFont;
+            text.fontStyle = FontStyle.Normal;
+            text.fontSize = 52;
+            text.color = TextColor;
+            return btn;
         }
 
         void Update()
