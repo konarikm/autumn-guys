@@ -13,8 +13,12 @@ namespace AutumnGuys
     {
         public enum GameState { Countdown, Running, Paused, Finished }
 
+        /// <summary>Race = reach the finish fast (checkpoints, respawn). Survival = last as long as possible, falling ends the run.</summary>
+        public enum LevelMode { Race, Survival }
+
         public static GameManager Instance { get; private set; }
 
+        public LevelMode mode = LevelMode.Race;
         public PlayerController player;
         public ThirdPersonCamera playerCamera;
         public Transform startPoint;
@@ -26,6 +30,14 @@ namespace AutumnGuys
         public float ElapsedTime { get; private set; }
         public int FallCount { get; private set; }
         public string LevelId => SceneManager.GetActiveScene().name;
+
+        public bool IsSurvival => mode == LevelMode.Survival;
+        /// <summary>Survival: bonus seconds collected (golden acorns).</summary>
+        public float BonusTime { get; private set; }
+        public int BonusCount { get; private set; }
+        /// <summary>Survival score = time survived + bonus.</summary>
+        public float Score => ElapsedTime + BonusTime;
+        public LevelHUD Hud => hud;
 
         LevelHUD hud;
         Checkpoint currentCheckpoint;
@@ -80,10 +92,13 @@ namespace AutumnGuys
             if (State == GameState.Running) ElapsedTime += Time.deltaTime;
 
             // Manual respawn if stuck.
-            if (kb != null && kb.rKey.wasPressedThisFrame && State == GameState.Running) RespawnPlayer(false);
+            if (!IsSurvival && kb != null && kb.rKey.wasPressedThisFrame && State == GameState.Running) RespawnPlayer(false);
 
             if (player.transform.position.y < killHeight && !respawning)
-                RespawnPlayer(true);
+            {
+                if (IsSurvival) GameOver();
+                else RespawnPlayer(true);
+            }
 
             // Re-lock the cursor after clicking back into the window.
             if (Cursor.lockState != CursorLockMode.Locked && Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
@@ -133,6 +148,34 @@ namespace AutumnGuys
             yield return new WaitForSeconds(1.5f);
             SetCursorLocked(false);
             hud.ShowWin(ElapsedTime, SaveData.GetBestTime(LevelId), record, FallCount);
+        }
+
+        /// <summary>Survival: adds bonus seconds to the score.</summary>
+        public void AddBonus(float seconds)
+        {
+            if (State != GameState.Running) return;
+            BonusTime += seconds;
+            BonusCount++;
+            hud.Flash($"+{seconds:0} s");
+        }
+
+        /// <summary>Survival: the player fell out of the arena.</summary>
+        public void GameOver()
+        {
+            if (State != GameState.Running && State != GameState.Countdown) return;
+            State = GameState.Finished;
+            player.ControlsEnabled = false;
+            player.ExternalVelocity = Vector3.zero;
+            hud.Flash("WHOOPS!");
+            bool record = SaveData.SubmitScore(LevelId, Score);
+            StartCoroutine(ShowGameOverDelayed(record));
+        }
+
+        IEnumerator ShowGameOverDelayed(bool record)
+        {
+            yield return new WaitForSeconds(1.2f);
+            SetCursorLocked(false);
+            hud.ShowGameOver(ElapsedTime, BonusTime, BonusCount, Score, SaveData.GetBestScore(LevelId), record);
         }
 
         public void Pause()

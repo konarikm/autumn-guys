@@ -38,6 +38,9 @@ namespace AutumnGuys
         public bool IsGrounded => grounded;
         public bool IsStunned => stunTimer > 0f;
 
+        /// <summary>Extra horizontal velocity applied on top of player input (e.g. wind gusts).</summary>
+        public Vector3 ExternalVelocity { get; set; }
+
         Rigidbody rb;
         CapsuleCollider capsule;
         readonly RaycastHit[] hits = new RaycastHit[8];
@@ -120,7 +123,7 @@ namespace AutumnGuys
 
             Vector3 velocity = rb.linearVelocity;
             Vector3 horizontal = new Vector3(velocity.x, 0f, velocity.z);
-            Vector3 platformVelocity = GetPlatformVelocity();
+            Vector3 platformVelocity = GetPlatformVelocity() + new Vector3(ExternalVelocity.x, 0f, ExternalVelocity.z);
 
             Vector3 wishDir = GetWishDirection();
 

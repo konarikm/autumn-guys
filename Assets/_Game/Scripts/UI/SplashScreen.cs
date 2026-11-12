@@ -29,7 +29,7 @@ namespace AutumnGuys
             img.sprite = UIFactory.LoadSprite("TeamLogo");
             img.preserveAspect = true;
 
-            var caption = UIFactory.CreateText(content, "Caption", "Gin & Tonic uvádí", 44, UIFactory.Cream);
+            var caption = UIFactory.CreateText(content, "Caption", "Gin & Tonic presents", 44, UIFactory.Cream);
             caption.rectTransform.anchorMin = new Vector2(0, 0);
             caption.rectTransform.anchorMax = new Vector2(1, 0.2f);
         }

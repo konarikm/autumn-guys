@@ -20,6 +20,7 @@ namespace AutumnGuys.EditorTools
         const string ScenesDir = Root + "/Scenes";
         const string PrefabsDir = Root + "/Prefabs";
         const string MaterialsDir = Root + "/Materials";
+        const string MeshesDir = Root + "/Meshes";
 
         const string CharacterPrefab = "Assets/Asset Store/PartyGameCharacters/Pack_FREE_PartyCharacters/Prefabs/Character_6dd688.prefab";
         const string PumpkinPrefab = "Assets/Asset Store/Halloween/Poly Halloween/Prefabs/Halloween/Pumpkin_A.prefab";
@@ -46,8 +47,8 @@ namespace AutumnGuys.EditorTools
         public static void BuildAll()
         {
             if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Autumn Guys",
-                    "Vygenerovat znovu materiály, prefaby a scény Splash, MainMenu a Level01?\n\nRuční změny v těchto scénách budou přepsány!",
-                    "Ano, vygenerovat", "Zrušit"))
+                    "Regenerate materials, prefabs and the Splash, MainMenu, Level01 and LeafPile scenes?\n\nManual changes in these scenes will be overwritten!",
+                    "Yes, regenerate", "Cancel"))
                 return;
 
             if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
@@ -56,6 +57,7 @@ namespace AutumnGuys.EditorTools
             BuildSplashScene();
             BuildMenuScene();
             BuildLevelScene();
+            BuildLeafPileScene();
             ConfigureBuildSettings();
             AssetDatabase.SaveAssets();
 
@@ -67,10 +69,22 @@ namespace AutumnGuys.EditorTools
         [MenuItem("Autumn Guys/Rebuild Level01 only", priority = 20)]
         public static void BuildLevelOnly()
         {
-            if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Autumn Guys", "Přepsat scénu Level01?", "Ano", "Zrušit")) return;
+            if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Autumn Guys", "Overwrite the Level01 scene?", "Yes", "Cancel")) return;
             Prepare();
             BuildLevelScene();
             ConfigureBuildSettings();
+        }
+
+        [MenuItem("Autumn Guys/Rebuild LeafPile only", priority = 21)]
+        public static void BuildLeafPileOnly()
+        {
+            if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Autumn Guys", "Overwrite the LeafPile scene?", "Yes", "Cancel")) return;
+            if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            Prepare();
+            BuildLeafPileScene();
+            ConfigureBuildSettings();
+            AssetDatabase.SaveAssets();
+            Debug.Log("[AutumnGuys] LeafPile scene built.");
         }
 
         [MenuItem("Autumn Guys/Convert Standard materials to URP", priority = 40)]
@@ -190,6 +204,18 @@ namespace AutumnGuys.EditorTools
             Mat("Finish", new Color(1f, 0.9f, 0.4f), 0.3f, new Color(0.4f, 0.3f, 0.05f));
             Mat("MushroomCap", new Color(0.85f, 0.12f, 0.1f), 0.4f);
             Mat("MushroomStem", new Color(0.95f, 0.9f, 0.8f));
+
+            // Leaf Pile minigame
+            Mat("LeafOrange", new Color(0.95f, 0.5f, 0.12f));
+            Mat("LeafOrangeMound", new Color(1f, 0.62f, 0.2f));
+            Mat("LeafRed", new Color(0.72f, 0.2f, 0.1f));
+            Mat("LeafRedMound", new Color(0.85f, 0.3f, 0.14f));
+            Mat("LeafGold", new Color(0.92f, 0.72f, 0.18f));
+            Mat("LeafGoldMound", new Color(1f, 0.82f, 0.3f));
+            Mat("AcornBody", new Color(0.6f, 0.36f, 0.14f), 0.35f);
+            Mat("AcornCap", new Color(0.32f, 0.2f, 0.09f));
+            Mat("GoldenAcorn", new Color(1f, 0.82f, 0.2f), 0.7f, new Color(0.6f, 0.42f, 0.05f));
+            Mat("AcornMarker", new Color(0.12f, 0.04f, 0.02f), 0f, new Color(0.45f, 0.06f, 0.02f));
 
             // Falling leaves particle material (alpha-clipped, double sided).
             string leafPath = $"{MaterialsDir}/Leaf.mat";
@@ -482,6 +508,288 @@ namespace AutumnGuys.EditorTools
             gm.killHeight = -10f;
 
             Save(scene, SceneNames.Level01);
+        }
+
+        // ───────────────────────────── Leaf Pile minigame ─────────────────────────────
+
+        const float HexLayoutRadius = 1.5f;   // centre spacing
+        const float HexGap = 0.12f;           // gap between neighbouring tiles
+        const float HexHeight = 0.6f;
+        const int HexRings = 5;               // 1 + 3*N*(N+1) = 91 tiles per floor
+        static readonly float[] LeafFloorHeights = { 0f, -8f, -16f };
+
+        static void BuildLeafPileScene()
+        {
+            var scene = NewScene(SceneNames.LeafPile);
+            SetupLighting();
+
+            var hexMesh = BuildHexMeshAsset();
+            var acornPrefab = BuildAcornPrefab("FallingAcorn", 1.4f, mats["AcornBody"], mats["AcornCap"], true);
+            var goldenPrefab = BuildAcornPrefab("GoldenAcorn", 0.8f, mats["GoldenAcorn"], mats["GoldenAcorn"], false);
+
+            var arenaRoot = new GameObject("Arena").transform;
+            var decor = new GameObject("Decor").transform;
+
+            // ── Floors ──
+            string[] tileMats = { "LeafOrange", "LeafRed", "LeafGold" };
+            var rng = new System.Random(1234);
+            for (int f = 0; f < LeafFloorHeights.Length; f++)
+            {
+                var floorRoot = new GameObject($"Floor_{f}").transform;
+                floorRoot.SetParent(arenaRoot, false);
+                string m = tileMats[f % tileMats.Length];
+                BuildHexFloor(floorRoot, f, LeafFloorHeights[f], hexMesh, mats[m], mats[m + "Mound"], rng);
+            }
+
+            var start = new GameObject("StartPoint").transform;
+            start.position = new Vector3(0f, LeafFloorHeights[0] + 0.05f, 0f);
+
+            // ── Game logic ──
+            var arenaGo = new GameObject("LeafPileArena");
+            var arena = arenaGo.AddComponent<LeafPileArena>();
+            arena.floorHeights = (float[])LeafFloorHeights.Clone();
+
+            var dropper = arenaGo.AddComponent<AcornDropper>();
+            dropper.acornPrefab = acornPrefab.GetComponent<FallingAcorn>();
+            dropper.markerMaterial = mats["AcornMarker"];
+
+            var wind = arenaGo.AddComponent<WindGust>();
+            wind.leafBurst = BuildLeafBurst(arenaGo.transform, wind.gustDuration);
+
+            var golden = arenaGo.AddComponent<GoldenAcornSpawner>();
+            golden.goldenAcornPrefab = goldenPrefab.GetComponent<GoldenAcorn>();
+
+            // ── Environment ──
+            float groundY = LeafFloorHeights[LeafFloorHeights.Length - 1] - 16f;
+            Box("ForestFloor", new Vector3(0, groundY - 0.5f, 0), new Vector3(400, 1, 400), mats["Ground"], decor);
+            for (int i = 0; i < 60; i++)
+            {
+                float a = (float)rng.NextDouble() * Mathf.PI * 2f;
+                float r = 24f + (float)rng.NextDouble() * 50f;
+                SpawnTree(decor, new Vector3(Mathf.Cos(a) * r, groundY, Mathf.Sin(a) * r), 22f + (float)rng.NextDouble() * 14f, rng);
+            }
+            for (int i = 0; i < 10; i++)
+            {
+                float a = i / 10f * Mathf.PI * 2f + 0.3f;
+                float r = 16f + (float)rng.NextDouble() * 6f;
+                SpawnDecor(i % 3 == 0 ? PumpkinCarvedPrefab : PumpkinPrefab, decor,
+                    new Vector3(Mathf.Cos(a) * r, groundY, Mathf.Sin(a) * r), 1.5f + (float)rng.NextDouble() * 1.5f, (float)rng.NextDouble() * 360f);
+            }
+
+            // ── Player, camera, game manager ──
+            var player = BuildPlayer(start.position, start.rotation);
+            var camGo = CreateCamera(start.position + new Vector3(0, 3, -7), Quaternion.Euler(15, 0, 0));
+            var cam = camGo.AddComponent<ThirdPersonCamera>();
+            cam.target = player.transform;
+            camGo.GetComponent<Camera>().farClipPlane = 600f;
+            player.GetComponent<PlayerController>().cameraTransform = camGo.transform;
+            AddFallingLeaves(camGo.transform);
+
+            var gm = new GameObject("GameManager").AddComponent<GameManager>();
+            gm.mode = GameManager.LevelMode.Survival;
+            gm.player = player.GetComponent<PlayerController>();
+            gm.playerCamera = cam;
+            gm.startPoint = start;
+            gm.killHeight = LeafFloorHeights[LeafFloorHeights.Length - 1] - 8f;
+
+            Save(scene, SceneNames.LeafPile);
+        }
+
+        static void BuildHexFloor(Transform parent, int floor, float topY, Mesh hexMesh, Material tileMat, Material moundMat, System.Random rng)
+        {
+            float sqrt3 = Mathf.Sqrt(3f);
+            for (int q = -HexRings; q <= HexRings; q++)
+            {
+                int rMin = Mathf.Max(-HexRings, -q - HexRings);
+                int rMax = Mathf.Min(HexRings, -q + HexRings);
+                for (int r = rMin; r <= rMax; r++)
+                {
+                    // Pointy-top axial layout.
+                    var pos = new Vector3(sqrt3 * HexLayoutRadius * (q + r * 0.5f), topY - HexHeight * 0.5f, 1.5f * HexLayoutRadius * r);
+
+                    var tile = new GameObject($"Tile_{floor}_{q}_{r}");
+                    tile.transform.SetParent(parent, false);
+                    tile.transform.position = pos;
+                    tile.AddComponent<MeshFilter>().sharedMesh = hexMesh;
+                    tile.AddComponent<MeshRenderer>().sharedMaterial = tileMat;
+                    var mc = tile.AddComponent<MeshCollider>();
+                    mc.sharedMesh = hexMesh;
+                    mc.convex = true;
+                    var rb = tile.AddComponent<Rigidbody>();
+                    rb.isKinematic = true;
+                    rb.mass = 5f;
+                    tile.AddComponent<LeafTile>().floor = floor;
+
+                    // Soft leaf mound on top (visual only).
+                    var mound = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                    mound.name = "LeafMound";
+                    Object.DestroyImmediate(mound.GetComponent<Collider>());
+                    mound.transform.SetParent(tile.transform, false);
+                    float s = 2.1f + (float)rng.NextDouble() * 0.3f;
+                    mound.transform.localPosition = new Vector3(0f, HexHeight * 0.5f, 0f);
+                    mound.transform.localRotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
+                    mound.transform.localScale = new Vector3(s, 0.22f, s * 0.92f);
+                    mound.GetComponent<Renderer>().sharedMaterial = moundMat;
+                }
+            }
+        }
+
+        /// <summary>Hexagonal prism (pointy-top) with flat-shaded sides, saved as a mesh asset.</summary>
+        static Mesh BuildHexMeshAsset()
+        {
+            EnsureFolder(MeshesDir);
+            float radius = HexLayoutRadius - HexGap / Mathf.Sqrt(3f);
+            float h = HexHeight * 0.5f;
+
+            var verts = new List<Vector3>();
+            var normals = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var tris = new List<int>();
+
+            Vector3 Corner(int i, float y)
+            {
+                float a = Mathf.Deg2Rad * (60f * i - 30f);
+                return new Vector3(Mathf.Cos(a) * radius, y, Mathf.Sin(a) * radius);
+            }
+
+            // Caps
+            foreach (bool top in new[] { true, false })
+            {
+                float y = top ? h : -h;
+                Vector3 n = top ? Vector3.up : Vector3.down;
+                int c = verts.Count;
+                verts.Add(new Vector3(0, y, 0)); normals.Add(n); uvs.Add(new Vector2(0.5f, 0.5f));
+                for (int i = 0; i < 6; i++)
+                {
+                    var p = Corner(i, y);
+                    verts.Add(p); normals.Add(n); uvs.Add(new Vector2(0.5f + p.x / (2f * radius), 0.5f + p.z / (2f * radius)));
+                }
+                for (int i = 0; i < 6; i++)
+                {
+                    int a = c + 1 + i, b = c + 1 + (i + 1) % 6;
+                    if (top) tris.AddRange(new[] { c, b, a });
+                    else tris.AddRange(new[] { c, a, b });
+                }
+            }
+
+            // Sides
+            for (int i = 0; i < 6; i++)
+            {
+                int j = (i + 1) % 6;
+                float mid = Mathf.Deg2Rad * (60f * i);
+                var n = new Vector3(Mathf.Cos(mid), 0f, Mathf.Sin(mid));
+                int c = verts.Count;
+                verts.Add(Corner(i, h)); verts.Add(Corner(j, h)); verts.Add(Corner(j, -h)); verts.Add(Corner(i, -h));
+                for (int k = 0; k < 4; k++) normals.Add(n);
+                uvs.Add(new Vector2(0, 1)); uvs.Add(new Vector2(1, 1)); uvs.Add(new Vector2(1, 0)); uvs.Add(new Vector2(0, 0));
+                tris.AddRange(new[] { c, c + 1, c + 2, c, c + 2, c + 3 });
+            }
+
+            var mesh = new Mesh { name = "HexTile" };
+            mesh.SetVertices(verts);
+            mesh.SetNormals(normals);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            mesh.RecalculateTangents();
+
+            string path = $"{MeshesDir}/HexTile.asset";
+            var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (existing == null)
+            {
+                AssetDatabase.CreateAsset(mesh, path);
+                return mesh;
+            }
+            EditorUtility.CopySerialized(mesh, existing);
+            Object.DestroyImmediate(mesh);
+            EditorUtility.SetDirty(existing);
+            return existing;
+        }
+
+        /// <summary>Acorn from primitives. falling = hazard (FallingAcorn), otherwise bonus pickup (GoldenAcorn).</summary>
+        static GameObject BuildAcornPrefab(string name, float size, Material bodyMat, Material capMat, bool falling)
+        {
+            var go = new GameObject(name);
+
+            void Part(PrimitiveType type, string partName, Vector3 localPos, Vector3 scale, Material mat)
+            {
+                var p = GameObject.CreatePrimitive(type);
+                p.name = partName;
+                Object.DestroyImmediate(p.GetComponent<Collider>());
+                p.transform.SetParent(go.transform, false);
+                p.transform.localPosition = localPos * size;
+                p.transform.localScale = scale * size;
+                p.GetComponent<Renderer>().sharedMaterial = mat;
+            }
+
+            Part(PrimitiveType.Sphere, "Body", new Vector3(0, -0.08f, 0), new Vector3(0.78f, 0.95f, 0.78f), bodyMat);
+            Part(PrimitiveType.Sphere, "Cap", new Vector3(0, 0.25f, 0), new Vector3(0.88f, 0.45f, 0.88f), capMat);
+            Part(PrimitiveType.Cylinder, "Stem", new Vector3(0, 0.52f, 0), new Vector3(0.1f, 0.1f, 0.1f), capMat);
+
+            var col = go.AddComponent<SphereCollider>();
+            col.isTrigger = true;
+            if (falling)
+            {
+                col.radius = 0.5f * size;
+                var rb = go.AddComponent<Rigidbody>();
+                rb.isKinematic = true;
+                go.AddComponent<FallingAcorn>();
+            }
+            else
+            {
+                col.radius = 1.1f; // generous pickup radius
+                go.AddComponent<GoldenAcorn>();
+            }
+
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, $"{PrefabsDir}/{name}.prefab");
+            Object.DestroyImmediate(go);
+            return prefab;
+        }
+
+        /// <summary>Gust of leaves blowing along the local +Z axis (WindGust positions and plays it).</summary>
+        static ParticleSystem BuildLeafBurst(Transform parent, float duration)
+        {
+            var go = new GameObject("WindLeafBurst");
+            go.transform.SetParent(parent, false);
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.playOnAwake = false;
+            main.loop = false;
+            main.duration = duration;
+            main.startLifetime = 2.2f;
+            main.startSpeed = new ParticleSystem.MinMaxCurve(10f, 16f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.2f, 0.45f);
+            main.startRotation3D = true;
+            main.startRotationX = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startRotationY = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.startRotationZ = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+            main.gravityModifier = 0.05f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 400;
+            main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.95f, 0.45f, 0.1f), new Color(0.75f, 0.15f, 0.08f));
+            var emission = ps.emission;
+            emission.rateOverTime = 90f;
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Box;
+            shape.scale = new Vector3(16f, 5f, 1f);
+            var rot = ps.rotationOverLifetime;
+            rot.enabled = true;
+            rot.separateAxes = true;
+            rot.x = new ParticleSystem.MinMaxCurve(-4f, 4f);
+            rot.y = new ParticleSystem.MinMaxCurve(-4f, 4f);
+            rot.z = new ParticleSystem.MinMaxCurve(-4f, 4f);
+            var noise = ps.noise;
+            noise.enabled = true;
+            noise.strength = 1.2f;
+            noise.frequency = 0.4f;
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            r.sharedMaterial = mats["Leaf"];
+            r.renderMode = ParticleSystemRenderMode.Mesh;
+            r.mesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
+            r.alignment = ParticleSystemRenderSpace.World;
+            r.shadowCastingMode = ShadowCastingMode.Off;
+            return ps;
         }
 
         // ───────────────────────────── Level pieces ─────────────────────────────
@@ -836,12 +1144,14 @@ namespace AutumnGuys.EditorTools
 
         static void ConfigureBuildSettings()
         {
-            EditorBuildSettings.scenes = new[]
+            var scenes = new List<EditorBuildSettingsScene>();
+            foreach (var name in new[] { SceneNames.Splash, SceneNames.MainMenu, SceneNames.Level01, SceneNames.LeafPile })
             {
-                new EditorBuildSettingsScene($"{ScenesDir}/{SceneNames.Splash}.unity", true),
-                new EditorBuildSettingsScene($"{ScenesDir}/{SceneNames.MainMenu}.unity", true),
-                new EditorBuildSettingsScene($"{ScenesDir}/{SceneNames.Level01}.unity", true),
-            };
+                string path = $"{ScenesDir}/{name}.unity";
+                if (File.Exists(path)) scenes.Add(new EditorBuildSettingsScene(path, true));
+                else Debug.LogWarning($"[AutumnGuys] Scene {path} not built yet – not added to Build Settings.");
+            }
+            EditorBuildSettings.scenes = scenes.ToArray();
 
             PlayerSettings.companyName = "Gin & Tonic";
             PlayerSettings.productName = "Autumn Guys";
