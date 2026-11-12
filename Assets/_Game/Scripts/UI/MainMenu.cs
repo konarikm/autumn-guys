@@ -10,6 +10,7 @@ namespace AutumnGuys
     {
         public string levelScene = SceneNames.Level01;
         public string leafPileScene = SceneNames.LeafPile;
+        public string memoryScene = SceneNames.HarvestMemory;
 
         static readonly Vector2 ButtonSize = new Vector2(520, 90);
 
@@ -43,12 +44,15 @@ namespace AutumnGuys
                 "Best time: " + SaveData.FormatTime(SaveData.GetBestTime(levelScene)));
             AddMinigame(minigamePanel.transform, "LEAF PILE", leafPileScene, -80,
                 "Best score: " + SaveData.FormatTime(SaveData.GetBestScore(leafPileScene)));
-            UIFactory.CreateButton(minigamePanel.transform, "BACK", new Vector2(-560, -200), () => ShowPanel(mainPanel), ButtonSize);
+            int bestRounds = Mathf.RoundToInt(SaveData.GetBestScore(memoryScene));
+            AddMinigame(minigamePanel.transform, "HARVEST MEMORY", memoryScene, -200,
+                "Best: " + (bestRounds > 0 ? $"{bestRounds} {(bestRounds == 1 ? "round" : "rounds")}" : "--"));
+            UIFactory.CreateButton(minigamePanel.transform, "BACK", new Vector2(-560, -320), () => ShowPanel(mainPanel), ButtonSize);
 
             // Controls panel
             controlsPanel = UIFactory.Stretch(canvas.transform, "ControlsPanel").gameObject;
             var bg = UIFactory.CreateRect(controlsPanel.transform, "Box", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0, -60), new Vector2(1200, 700));
+                new Vector2(0, -80), new Vector2(1300, 780));
             bg.gameObject.AddComponent<Image>().color = new Color(0.2f, 0.1f, 0.05f, 0.85f);
             var txt = UIFactory.CreateText(bg, "Text",
                 "CONTROLS\n\n" +
@@ -59,9 +63,10 @@ namespace AutumnGuys
                 "Esc – pause\n\n" +
                 "Obstacle Race: reach the finish as fast as you can!\n" +
                 "Leaf Pile: the leaf piles fall away under your feet –\n" +
-                "survive as long as you can and grab golden acorns (+5 s)!", 36, UIFactory.Cream);
+                "survive as long as you can and grab golden acorns (+5 s)!\n" +
+                "Harvest Memory: remember the icons, then stand on the right one!", 34, UIFactory.Cream);
             txt.rectTransform.offsetMin = new Vector2(0, 110);
-            UIFactory.CreateButton(bg, "BACK", new Vector2(0, -270), () => ShowPanel(mainPanel));
+            UIFactory.CreateButton(bg, "BACK", new Vector2(0, -310), () => ShowPanel(mainPanel));
 
             ShowPanel(mainPanel);
         }

@@ -25,6 +25,7 @@ namespace AutumnGuys.EditorTools
         const string CharacterPrefab = "Assets/Asset Store/PartyGameCharacters/Pack_FREE_PartyCharacters/Prefabs/Character_6dd688.prefab";
         const string PumpkinPrefab = "Assets/Asset Store/Halloween/Poly Halloween/Prefabs/Halloween/Pumpkin_A.prefab";
         const string PumpkinCarvedPrefab = "Assets/Asset Store/Halloween/Poly Halloween/Prefabs/Halloween/Pumpkin_Carved_Lit_A.prefab";
+        const string AmanitaPrefab = "Assets/Asset Store/Halloween/Poly Halloween/Prefabs/Halloween/Mushroom_Magical_Amanita_Mature.prefab";
         static readonly string[] TreePrefabs =
         {
             "Assets/Asset Store/ForestPack/Prefabs/Tree_Autumn.prefab",
@@ -47,7 +48,7 @@ namespace AutumnGuys.EditorTools
         public static void BuildAll()
         {
             if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Autumn Guys",
-                    "Regenerate materials, prefabs and the Splash, MainMenu, Level01 and LeafPile scenes?\n\nManual changes in these scenes will be overwritten!",
+                    "Regenerate materials, prefabs and the Splash, MainMenu, Level01, LeafPile and HarvestMemory scenes?\n\nManual changes in these scenes will be overwritten!",
                     "Yes, regenerate", "Cancel"))
                 return;
 
@@ -58,6 +59,7 @@ namespace AutumnGuys.EditorTools
             BuildMenuScene();
             BuildLevelScene();
             BuildLeafPileScene();
+            BuildMemoryScene();
             ConfigureBuildSettings();
             AssetDatabase.SaveAssets();
 
@@ -85,6 +87,18 @@ namespace AutumnGuys.EditorTools
             ConfigureBuildSettings();
             AssetDatabase.SaveAssets();
             Debug.Log("[AutumnGuys] LeafPile scene built.");
+        }
+
+        [MenuItem("Autumn Guys/Rebuild HarvestMemory only", priority = 22)]
+        public static void BuildMemoryOnly()
+        {
+            if (!Application.isBatchMode && !EditorUtility.DisplayDialog("Autumn Guys", "Overwrite the HarvestMemory scene?", "Yes", "Cancel")) return;
+            if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            Prepare();
+            BuildMemoryScene();
+            ConfigureBuildSettings();
+            AssetDatabase.SaveAssets();
+            Debug.Log("[AutumnGuys] HarvestMemory scene built.");
         }
 
         [MenuItem("Autumn Guys/Convert Standard materials to URP", priority = 40)]
@@ -216,6 +230,30 @@ namespace AutumnGuys.EditorTools
             Mat("AcornCap", new Color(0.32f, 0.2f, 0.09f));
             Mat("GoldenAcorn", new Color(1f, 0.82f, 0.2f), 0.7f, new Color(0.6f, 0.42f, 0.05f));
             Mat("AcornMarker", new Color(0.12f, 0.04f, 0.02f), 0f, new Color(0.45f, 0.06f, 0.02f));
+
+            // Harvest Memory
+            Mat("MemoryTileA", new Color(0.55f, 0.36f, 0.2f));
+            Mat("MemoryTileB", new Color(0.66f, 0.45f, 0.26f));
+            Mat("SignBoard", new Color(0.95f, 0.88f, 0.7f));
+            string leafIconPath = $"{MaterialsDir}/LeafIcon.mat";
+            var leafIcon = AssetDatabase.LoadAssetAtPath<Material>(leafIconPath);
+            if (leafIcon == null)
+            {
+                leafIcon = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(leafIcon, leafIconPath);
+            }
+            leafIcon.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(Root + "/Textures/Leaf.png"));
+            leafIcon.SetColor("_BaseColor", new Color(1f, 0.78f, 0.12f));
+            leafIcon.SetFloat("_AlphaClip", 1f);
+            leafIcon.SetFloat("_Cutoff", 0.5f);
+            leafIcon.EnableKeyword("_ALPHATEST_ON");
+            leafIcon.SetFloat("_Cull", 0f);
+            leafIcon.SetFloat("_Smoothness", 0.2f);
+            leafIcon.EnableKeyword("_EMISSION");
+            leafIcon.SetColor("_EmissionColor", new Color(0.25f, 0.18f, 0.02f));
+            leafIcon.SetTexture("_EmissionMap", leafIcon.GetTexture("_BaseMap"));
+            EditorUtility.SetDirty(leafIcon);
+            mats["LeafIcon"] = leafIcon;
 
             // Falling leaves particle material (alpha-clipped, double sided).
             string leafPath = $"{MaterialsDir}/Leaf.mat";
@@ -710,21 +748,7 @@ namespace AutumnGuys.EditorTools
         static GameObject BuildAcornPrefab(string name, float size, Material bodyMat, Material capMat, bool falling)
         {
             var go = new GameObject(name);
-
-            void Part(PrimitiveType type, string partName, Vector3 localPos, Vector3 scale, Material mat)
-            {
-                var p = GameObject.CreatePrimitive(type);
-                p.name = partName;
-                Object.DestroyImmediate(p.GetComponent<Collider>());
-                p.transform.SetParent(go.transform, false);
-                p.transform.localPosition = localPos * size;
-                p.transform.localScale = scale * size;
-                p.GetComponent<Renderer>().sharedMaterial = mat;
-            }
-
-            Part(PrimitiveType.Sphere, "Body", new Vector3(0, -0.08f, 0), new Vector3(0.78f, 0.95f, 0.78f), bodyMat);
-            Part(PrimitiveType.Sphere, "Cap", new Vector3(0, 0.25f, 0), new Vector3(0.88f, 0.45f, 0.88f), capMat);
-            Part(PrimitiveType.Cylinder, "Stem", new Vector3(0, 0.52f, 0), new Vector3(0.1f, 0.1f, 0.1f), capMat);
+            AddAcornVisual(go.transform, Vector3.zero, size, bodyMat, capMat);
 
             var col = go.AddComponent<SphereCollider>();
             col.isTrigger = true;
@@ -744,6 +768,25 @@ namespace AutumnGuys.EditorTools
             var prefab = PrefabUtility.SaveAsPrefabAsset(go, $"{PrefabsDir}/{name}.prefab");
             Object.DestroyImmediate(go);
             return prefab;
+        }
+
+        /// <summary>Acorn made of primitives (no colliders), centred on <paramref name="center"/>.</summary>
+        static void AddAcornVisual(Transform parent, Vector3 center, float size, Material bodyMat, Material capMat)
+        {
+            void Part(PrimitiveType type, string partName, Vector3 localPos, Vector3 scale, Material mat)
+            {
+                var p = GameObject.CreatePrimitive(type);
+                p.name = partName;
+                Object.DestroyImmediate(p.GetComponent<Collider>());
+                p.transform.SetParent(parent, false);
+                p.transform.localPosition = center + localPos * size;
+                p.transform.localScale = scale * size;
+                p.GetComponent<Renderer>().sharedMaterial = mat;
+            }
+
+            Part(PrimitiveType.Sphere, "Body", new Vector3(0, -0.08f, 0), new Vector3(0.78f, 0.95f, 0.78f), bodyMat);
+            Part(PrimitiveType.Sphere, "Cap", new Vector3(0, 0.25f, 0), new Vector3(0.88f, 0.45f, 0.88f), capMat);
+            Part(PrimitiveType.Cylinder, "Stem", new Vector3(0, 0.52f, 0), new Vector3(0.1f, 0.1f, 0.1f), capMat);
         }
 
         /// <summary>Gust of leaves blowing along the local +Z axis (WindGust positions and plays it).</summary>
@@ -790,6 +833,155 @@ namespace AutumnGuys.EditorTools
             r.alignment = ParticleSystemRenderSpace.World;
             r.shadowCastingMode = ShadowCastingMode.Off;
             return ps;
+        }
+
+        // ───────────────────────────── Harvest Memory minigame ─────────────────────────────
+
+        const int MemoryGridSize = 5;
+        const float MemoryTileSize = 3f;
+        const float MemoryTileGap = 0.35f;
+        const float MemoryTileHeight = 0.6f;
+
+        static void BuildMemoryScene()
+        {
+            var scene = NewScene(SceneNames.HarvestMemory);
+            SetupLighting();
+
+            var arenaRoot = new GameObject("Arena").transform;
+            var decor = new GameObject("Decor").transform;
+
+            // ── Icon prefabs ──
+            var iconPumpkin = BuildIconPrefab("Icon_Pumpkin", go =>
+            {
+                var v = SpawnVisual(PumpkinPrefab, go.transform);
+                if (v == null) return;
+                FitToSize(v, 1.4f, false);
+                PlaceOnGround(v, Vector3.zero);
+            });
+            var iconMushroom = BuildIconPrefab("Icon_Mushroom", go =>
+            {
+                var v = SpawnVisual(AmanitaPrefab, go.transform);
+                if (v == null) return;
+                FitToSize(v, 1.7f, true);
+                PlaceOnGround(v, Vector3.zero);
+            });
+            var iconAcorn = BuildIconPrefab("Icon_Acorn", go =>
+                AddAcornVisual(go.transform, new Vector3(0f, 0.56f * 1.3f, 0f), 1.3f, mats["AcornBody"], mats["AcornCap"]));
+            var iconLeaf = BuildIconPrefab("Icon_Leaf", go =>
+            {
+                var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                q.name = "Leaf";
+                Object.DestroyImmediate(q.GetComponent<Collider>());
+                q.transform.SetParent(go.transform, false);
+                q.transform.localPosition = new Vector3(0f, 0.9f, 0f);
+                q.transform.localScale = Vector3.one * 1.8f;
+                q.GetComponent<Renderer>().sharedMaterial = mats["LeafIcon"];
+            });
+
+            // ── Tile grid ──
+            float step = MemoryTileSize + MemoryTileGap;
+            float half = (MemoryGridSize - 1) * 0.5f;
+            for (int x = 0; x < MemoryGridSize; x++)
+            for (int z = 0; z < MemoryGridSize; z++)
+            {
+                var tile = new GameObject($"MemoryTile_{x}_{z}");
+                tile.transform.SetParent(arenaRoot, false);
+                tile.transform.position = new Vector3((x - half) * step, -MemoryTileHeight * 0.5f, (z - half) * step);
+                var box = tile.AddComponent<BoxCollider>();
+                box.size = new Vector3(MemoryTileSize, MemoryTileHeight, MemoryTileSize);
+                var rb = tile.AddComponent<Rigidbody>();
+                rb.isKinematic = true;
+                rb.mass = 5f;
+
+                var visual = Box("Visual", Vector3.zero, box.size, mats[(x + z) % 2 == 0 ? "MemoryTileA" : "MemoryTileB"], tile.transform);
+                visual.transform.localPosition = Vector3.zero;
+                Object.DestroyImmediate(visual.GetComponent<Collider>());
+
+                var anchor = new GameObject("IconAnchor").transform;
+                anchor.SetParent(tile.transform, false);
+                anchor.localPosition = new Vector3(0f, MemoryTileHeight * 0.5f, 0f);
+                tile.AddComponent<MemoryTile>().iconAnchor = anchor;
+            }
+
+            // ── Sign that shows the target icon ──
+            float signZ = (half + 0.5f) * step + 3.5f;
+            var sign = new GameObject("TargetSign").transform;
+            sign.SetParent(arenaRoot, false);
+            sign.position = new Vector3(0f, 0f, signZ);
+            var board = Box("Board", Vector3.zero, new Vector3(6.5f, 5f, 0.3f), mats["SignBoard"], sign);
+            board.transform.localPosition = new Vector3(0f, 5.8f, 0.4f);
+            var frame = Box("Frame", Vector3.zero, new Vector3(7.1f, 5.6f, 0.25f), mats["WoodDark"], sign);
+            frame.transform.localPosition = new Vector3(0f, 5.8f, 0.6f);
+            foreach (float px in new[] { -3.3f, 3.3f })
+            {
+                var post = Box("Post", Vector3.zero, new Vector3(0.45f, 14f, 0.45f), mats["Wood"], sign);
+                post.transform.localPosition = new Vector3(px, 1f, 0.6f);
+            }
+            var displayAnchor = new GameObject("DisplayAnchor").transform;
+            displayAnchor.SetParent(sign, false);
+            displayAnchor.localPosition = new Vector3(0f, 3.9f, -0.6f);
+
+            // ── Game logic ──
+            var arena = new GameObject("MemoryArena").AddComponent<MemoryArena>();
+            arena.displayAnchor = displayAnchor;
+            arena.icons = new[]
+            {
+                new MemoryArena.Icon { name = "PUMPKIN", prefab = iconPumpkin, color = new Color(1f, 0.55f, 0.1f) },
+                new MemoryArena.Icon { name = "MUSHROOM", prefab = iconMushroom, color = new Color(1f, 0.3f, 0.25f) },
+                new MemoryArena.Icon { name = "ACORN", prefab = iconAcorn, color = new Color(0.85f, 0.6f, 0.35f) },
+                new MemoryArena.Icon { name = "LEAF", prefab = iconLeaf, color = new Color(1f, 0.85f, 0.2f) },
+            };
+
+            // ── Environment ──
+            const float groundY = -20f;
+            Box("ForestFloor", new Vector3(0, groundY - 0.5f, 0), new Vector3(400, 1, 400), mats["Ground"], decor);
+            var rng = new System.Random(77);
+            for (int i = 0; i < 55; i++)
+            {
+                float a = (float)rng.NextDouble() * Mathf.PI * 2f;
+                float r = 22f + (float)rng.NextDouble() * 50f;
+                SpawnTree(decor, new Vector3(Mathf.Cos(a) * r, groundY, Mathf.Sin(a) * r), 20f + (float)rng.NextDouble() * 12f, rng);
+            }
+            for (int i = 0; i < 12; i++)
+            {
+                float a = i / 12f * Mathf.PI * 2f;
+                float r = 14f + (float)rng.NextDouble() * 6f;
+                SpawnDecor(i % 3 == 0 ? PumpkinCarvedPrefab : PumpkinPrefab, decor,
+                    new Vector3(Mathf.Cos(a) * r, groundY, Mathf.Sin(a) * r), 1.5f + (float)rng.NextDouble() * 1.5f, (float)rng.NextDouble() * 360f);
+            }
+
+            // ── Player, camera, game manager ──
+            var start = new GameObject("StartPoint").transform;
+            start.position = new Vector3(0f, 0.05f, 0f);
+            var player = BuildPlayer(start.position, start.rotation);
+            var camGo = CreateCamera(start.position + new Vector3(0, 3, -7), Quaternion.Euler(15, 0, 0));
+            var cam = camGo.AddComponent<ThirdPersonCamera>();
+            cam.target = player.transform;
+            camGo.GetComponent<Camera>().farClipPlane = 600f;
+            player.GetComponent<PlayerController>().cameraTransform = camGo.transform;
+            AddFallingLeaves(camGo.transform);
+
+            var gm = new GameObject("GameManager").AddComponent<GameManager>();
+            gm.mode = GameManager.LevelMode.Survival;
+            gm.scoreType = GameManager.ScoreType.Rounds;
+            gm.player = player.GetComponent<PlayerController>();
+            gm.playerCamera = cam;
+            gm.startPoint = start;
+            gm.killHeight = -8f;
+
+            Save(scene, SceneNames.HarvestMemory);
+        }
+
+        /// <summary>Visual-only icon prefab; <paramref name="build"/> adds the model under the root (base at the origin).</summary>
+        static GameObject BuildIconPrefab(string name, System.Action<GameObject> build)
+        {
+            var go = new GameObject(name);
+            build(go);
+            foreach (var c in go.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = ShadowCastingMode.On;
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, $"{PrefabsDir}/{name}.prefab");
+            Object.DestroyImmediate(go);
+            return prefab;
         }
 
         // ───────────────────────────── Level pieces ─────────────────────────────
@@ -1145,7 +1337,7 @@ namespace AutumnGuys.EditorTools
         static void ConfigureBuildSettings()
         {
             var scenes = new List<EditorBuildSettingsScene>();
-            foreach (var name in new[] { SceneNames.Splash, SceneNames.MainMenu, SceneNames.Level01, SceneNames.LeafPile })
+            foreach (var name in new[] { SceneNames.Splash, SceneNames.MainMenu, SceneNames.Level01, SceneNames.LeafPile, SceneNames.HarvestMemory })
             {
                 string path = $"{ScenesDir}/{name}.unity";
                 if (File.Exists(path)) scenes.Add(new EditorBuildSettingsScene(path, true));

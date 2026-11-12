@@ -18,7 +18,11 @@ namespace AutumnGuys
 
         public static GameManager Instance { get; private set; }
 
+        /// <summary>Survival scoring: Time = seconds survived + bonus, Rounds = rounds survived.</summary>
+        public enum ScoreType { Time, Rounds }
+
         public LevelMode mode = LevelMode.Race;
+        public ScoreType scoreType = ScoreType.Time;
         public PlayerController player;
         public ThirdPersonCamera playerCamera;
         public Transform startPoint;
@@ -35,8 +39,15 @@ namespace AutumnGuys
         /// <summary>Survival: bonus seconds collected (golden acorns).</summary>
         public float BonusTime { get; private set; }
         public int BonusCount { get; private set; }
-        /// <summary>Survival score = time survived + bonus.</summary>
-        public float Score => ElapsedTime + BonusTime;
+        /// <summary>Survival (Rounds scoring): rounds survived.</summary>
+        public int Rounds { get; private set; }
+        public bool ScoresRounds => scoreType == ScoreType.Rounds;
+        /// <summary>Survival score = rounds survived, or time survived + bonus.</summary>
+        public float Score => ScoresRounds ? Rounds : ElapsedTime + BonusTime;
+        /// <summary>Formats a score value of this level for display.</summary>
+        public string FormatScore(float score) => ScoresRounds
+            ? $"{score:0} {(Mathf.RoundToInt(score) == 1 ? "round" : "rounds")}"
+            : SaveData.FormatTime(score);
         public LevelHUD Hud => hud;
 
         LevelHUD hud;
@@ -157,6 +168,13 @@ namespace AutumnGuys
             BonusTime += seconds;
             BonusCount++;
             hud.Flash($"+{seconds:0} s");
+        }
+
+        /// <summary>Survival (Rounds scoring): the player survived a round.</summary>
+        public void AddRound()
+        {
+            if (State != GameState.Running) return;
+            Rounds++;
         }
 
         /// <summary>Survival: the player fell out of the arena.</summary>

@@ -12,6 +12,7 @@ namespace AutumnGuys
         Text timerText;
         Text bestText;
         Text countdownText;
+        Text promptText;
         Text flashText;
         Image fadeImage;
         GameObject pausePanel;
@@ -38,13 +39,18 @@ namespace AutumnGuys
             bestText = UIFactory.CreateText(root, "Best", "", 32, UIFactory.Cream, TextAnchor.UpperCenter);
             bestText.rectTransform.offsetMax = new Vector2(0, -100);
 
-            string hintText = gm.IsSurvival
-                ? "WASD move · Space jump · Esc pause · Keep moving!"
-                : "WASD move · Space jump · R checkpoint · Esc pause";
+            string hintText = !gm.IsSurvival ? "WASD move · Space jump · R checkpoint · Esc pause"
+                : gm.ScoresRounds ? "WASD move · Space jump · Esc pause · Remember the icons!"
+                : "WASD move · Space jump · Esc pause · Keep moving!";
             var hint = UIFactory.CreateText(root, "Hint", hintText, 26, new Color(1f, 1f, 1f, 0.8f), TextAnchor.LowerLeft);
             hint.rectTransform.offsetMin = new Vector2(24, 20);
 
             BuildWindIndicator(root);
+
+            promptText = UIFactory.CreateText(root, "Prompt", "", 72, Color.white);
+            promptText.supportRichText = true;
+            promptText.rectTransform.anchorMin = new Vector2(0, 0.7f);
+            promptText.rectTransform.anchorMax = new Vector2(1, 0.82f);
 
             countdownText = UIFactory.CreateText(root, "Countdown", "", 180, UIFactory.Orange);
             flashText = UIFactory.CreateText(root, "Flash", "", 90, Color.white);
@@ -117,7 +123,7 @@ namespace AutumnGuys
             if (gm.IsSurvival)
             {
                 float bestScore = SaveData.GetBestScore(gm.LevelId);
-                bestText.text = bestScore > 0f ? "Best: " + SaveData.FormatTime(bestScore) : "";
+                bestText.text = bestScore > 0f ? "Best: " + gm.FormatScore(bestScore) : "";
                 return;
             }
             float best = SaveData.GetBestTime(gm.LevelId);
@@ -126,9 +132,19 @@ namespace AutumnGuys
 
         void Update()
         {
-            float shown = gm.IsSurvival ? gm.Score : gm.ElapsedTime;
-            timerText.text = SaveData.FormatTime(Mathf.Max(0.0001f, shown));
+            if (gm.IsSurvival && gm.ScoresRounds)
+                timerText.text = $"ROUND {gm.Rounds + 1}";
+            else
+                timerText.text = SaveData.FormatTime(Mathf.Max(0.0001f, gm.IsSurvival ? gm.Score : gm.ElapsedTime));
             UpdateWindIndicator();
+        }
+
+        /// <summary>Persistent instruction line (rich text allowed). Null or empty hides it.</summary>
+        public void ShowPrompt(string text)
+        {
+            bool changed = promptText.text != (text ?? "");
+            promptText.text = text ?? "";
+            if (changed && !string.IsNullOrEmpty(text)) StartCoroutine(Punch(promptText.rectTransform));
         }
 
         /// <summary>Shows a wind arrow pointing in the given world direction. Warning = blinking, otherwise solid.</summary>
@@ -213,9 +229,18 @@ namespace AutumnGuys
         public void ShowGameOver(float time, float bonus, int bonusCount, float score, float best, bool record)
         {
             HideWind();
+            ShowPrompt(null);
+            ShowCountdown(null);
             winTitle.text = "GAME OVER!";
             winPanel.SetActive(true);
             winText.supportRichText = true;
+            if (gm.ScoresRounds)
+            {
+                winText.text = $"Rounds survived: {score:0}\n" +
+                               (record ? "<color=#FFD24A>NEW RECORD!</color>" : $"Best: {gm.FormatScore(best)}");
+                Select(winPanel);
+                return;
+            }
             winText.text = $"Survived: {SaveData.FormatTime(time)}\n" +
                            $"Golden acorns: {bonusCount} (+{bonus:0} s)\n" +
                            $"Score: {SaveData.FormatTime(score)}\n" +

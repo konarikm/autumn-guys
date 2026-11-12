@@ -48,5 +48,6 @@ namespace AutumnGuys
         public const string MainMenu = "MainMenu";
         public const string Level01 = "Level01";
         public const string LeafPile = "LeafPile";
+        public const string HarvestMemory = "HarvestMemory";
     }
 }
